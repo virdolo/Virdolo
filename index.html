@@ -693,15 +693,15 @@ footer {
   <p class="brand-tagline">Wear the stance.</p>
 </section>
 
-<div class="categories-nav">
-  <button class="cat-btn active" onclick="filterCategory('all', this)">الكل</button>
-  <button class="cat-btn" onclick="filterCategory('hoodie', this)">هوديات</button>
-  <button class="cat-btn" onclick="filterCategory('ensemble', this)">أونسومبل</button>
-  <button class="cat-btn" onclick="filterCategory('knit', this)">تريكو صوف</button>
-  <button class="cat-btn" onclick="filterCategory('pants', this)">سراويل</button>
-  <button class="cat-btn" onclick="filterCategory('tshirt', this)">تريكو صيفي</button>
-  <button class="cat-btn" onclick="filterCategory('shorts', this)">شورتات</button>
-  <button class="cat-btn" onclick="filterCategory('accessories', this)">شاشيات وإكسسوارات</button>
+<div class="categories-nav" id="categoriesNav">
+  <button class="cat-btn active" data-cat="all" onclick="filterCategory('all', this)">الكل</button>
+  <button class="cat-btn" data-cat="hoodie" onclick="filterCategory('hoodie', this)">هوديات</button>
+  <button class="cat-btn" data-cat="ensemble" onclick="filterCategory('ensemble', this)">أونسومبل</button>
+  <button class="cat-btn" data-cat="knit" onclick="filterCategory('knit', this)">تريكو صوف</button>
+  <button class="cat-btn" data-cat="pants" onclick="filterCategory('pants', this)">سراويل</button>
+  <button class="cat-btn" data-cat="tshirt" onclick="filterCategory('tshirt', this)">تريكو صيفي</button>
+  <button class="cat-btn" data-cat="shorts" onclick="filterCategory('shorts', this)">شورتات</button>
+  <button class="cat-btn" data-cat="accessories" onclick="filterCategory('accessories', this)">شاشيات وإكسسوارات</button>
 </div>
 
 <div class="container">
@@ -825,6 +825,7 @@ footer {
 
 <script>
 const ORDER_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbyxMVPuZVE-yyERv9YVYNRwe1s0ngitlDpEOL8BPB290SW9bsrnvmUDBqmoQI8HpjA1/exec";
+const PRODUCTS_FEED_URL = ORDER_WEBHOOK_URL;
 const WHATSAPP_NUMBER = "213797417520";
 const SOCIAL_HANDLES = {
   facebook: "https://www.facebook.com/virdolo1",
@@ -835,6 +836,17 @@ const SOCIAL_HANDLES = {
 const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 const STORAGE_CART_KEY = "virdolo_cart_v1";
 const STORAGE_CUSTOMER_KEY = "virdolo_customer_v1";
+
+const CATEGORY_LABELS = {
+  all: "الكل",
+  hoodie: "هوديات",
+  ensemble: "أونسومبل",
+  knit: "تريكو صوف",
+  pants: "سراويل",
+  tshirt: "تريكو صيفي",
+  shorts: "شورتات",
+  accessories: "شاشيات وإكسسوارات"
+};
 
 const COMMUNES_BY_WILAYA = {
   "01": ["أدرار", "أولف", "رقان", "تسابيت", "فنوغيل", "تيمي", "زاوية كنتة", "إن زغمير", "شروين", "تمنطيط", "السبع", "أقبلي", "تيمقطن", "أوقروت", "دلدول", "متارفة"],
@@ -954,7 +966,7 @@ const SHIPPING_RATES = [
   { code: "58", name: "المنيعة (El Meniaa)", domicile: 950, stopdesk: 600 }
 ];
 
-const products = [
+const FALLBACK_PRODUCTS = [
   { id: 1, name: "Virdolo هودي أسود", category: "hoodie", price: 4000, img: "https://i.ibb.co/mgLNgwP/1794616283615.jpg" },
   { id: 2, name: "Virdolo هودي رمادي", category: "hoodie", price: 4000, img: "https://i.ibb.co/hJJnGdBZ/1794616364756.jpg" },
   { id: 3, name: "Virdolo هودي أبيض", category: "hoodie", price: 4000, img: "https://i.ibb.co/rfQz2JTY/1794616441008.jpg" },
@@ -1016,6 +1028,7 @@ const products = [
   { id: 52, name: "Virdolo قبعة أخضر", category: "accessories", price: 1250, img: "https://i.ibb.co/TBdbqGLq/1795387096574.jpg" }
 ];
 
+let products = [...FALLBACK_PRODUCTS];
 let cart = [];
 let selectedSizes = {};
 let currentCategory = 'all';
@@ -1187,6 +1200,37 @@ function showConfirmationBox(text) {
   }
 }
 
+function syncCategoryButtons(productList) {
+  const nav = document.getElementById("categoriesNav");
+  if (!nav) return;
+
+  const existingCats = new Set(
+    Array.from(nav.querySelectorAll(".cat-btn")).map(btn => btn.dataset.cat)
+  );
+
+  const productCats = Array.from(
+    new Set(productList.map(p => String(p.category || "").trim().toLowerCase()).filter(Boolean))
+  );
+
+  productCats.forEach(cat => {
+    if (cat === "all" || existingCats.has(cat)) return;
+    const btn = document.createElement("button");
+    btn.className = "cat-btn";
+    btn.dataset.cat = cat;
+    btn.textContent = CATEGORY_LABELS[cat] || cat;
+    btn.onclick = function() { filterCategory(cat, this); };
+    nav.appendChild(btn);
+  });
+
+  if (currentCategory !== "all" && !productCats.includes(currentCategory)) {
+    currentCategory = "all";
+  }
+
+  nav.querySelectorAll(".cat-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.cat === currentCategory);
+  });
+}
+
 function renderSizeButtons(productId, containerId) {
   const activeSize = selectedSizes[productId] || 'M';
   const container = document.getElementById(containerId);
@@ -1236,16 +1280,40 @@ function renderCurrentCategory() {
   if (currentCategory === 'all') {
     displayProducts(products);
   } else {
-    displayProducts(products.filter(p => p.category === currentCategory));
+    displayProducts(products.filter(p => String(p.category || '').toLowerCase() === currentCategory));
   }
 }
 
 function filterCategory(category, btn) {
-  if (currentCategory === category) return;
   currentCategory = category;
   document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   renderCurrentCategory();
+}
+
+async function fetchProductsFromSheet() {
+  if (!PRODUCTS_FEED_URL) return;
+  try {
+    const res = await fetch(`${PRODUCTS_FEED_URL}?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data && data.status === "ok" && Array.isArray(data.products) && data.products.length > 0) {
+      products = data.products.map((item, idx) => ({
+        id: Number(item.id) || (idx + 1),
+        name: String(item.name || "").trim(),
+        category: String(item.category || "all").trim().toLowerCase(),
+        price: Number(item.price) || 0,
+        img: String(item.img || "").trim()
+      })).filter(p => p.name && p.price > 0 && p.img);
+
+      if (products.length > 0) {
+        syncCategoryButtons(products);
+        renderCurrentCategory();
+      }
+    }
+  } catch (err) {
+    // نبقي على المنتجات الحالية بأمان إذا تعذر الاتصال
+  }
 }
 
 function updateSelectorVisual(container, size) {
@@ -1569,8 +1637,10 @@ async function submitOrder() {
 initSocialLinks();
 populateWilayas();
 loadSavedState();
+syncCategoryButtons(products);
 displayProducts(products);
 updateCartUI();
+fetchProductsFromSheet();
 </script>
 </body>
 </html>

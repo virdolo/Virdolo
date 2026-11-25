@@ -141,7 +141,6 @@ header {
   }
 }
 
-/* عرض المنتجات زوج مقابل زوج بأبعاد متوازنة */
 .products-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -261,7 +260,6 @@ header {
   background: #c9c9c9;
 }
 
-/* نافذة معاينة المنتج: الصورة كاملة دون حواف */
 .product-modal {
   position: fixed;
   inset: 0;
@@ -339,7 +337,6 @@ header {
   justify-content: center;
 }
 
-/* إشعار الإضافة للسلة */
 .toast-notice {
   position: fixed;
   bottom: 24px;
@@ -539,23 +536,43 @@ header {
 }
 .checkout-btn {
   width: 100%;
-  background: #25d366;
-  color: #fff;
+  background: #ffffff;
+  color: #000000;
   border: none;
   padding: 13px;
   border-radius: 8px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
   font-size: 16px;
-  transition: background 0.2s;
+  transition: background 0.2s, opacity 0.2s;
   margin-top: 4px;
 }
 .checkout-btn:hover {
-  background: #1ebe5b;
+  background: #dcdcdc;
 }
 .checkout-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+.order-confirmation-box {
+  display: none;
+  margin-top: 14px;
+  background: rgba(37, 211, 102, 0.12);
+  border: 1px solid #25d366;
+  color: #e9fff1;
+  border-radius: 10px;
+  padding: 14px;
+  line-height: 1.65;
+  font-size: 13.5px;
+}
+.order-confirmation-box.show {
+  display: block;
+}
+.order-confirmation-box strong {
+  display: block;
+  color: #3be87a;
+  font-size: 15px;
+  margin-bottom: 4px;
 }
 footer {
   text-align: center;
@@ -609,7 +626,6 @@ footer {
 
 <section class="hero">
   <div class="hero-emblem" aria-label="Virdolo Script V Emblem">
-    <!-- رمز V المنحني ببداية منفصلة عن النزلة ونهاية ممدودة لليمين -->
     <svg viewBox="0 0 185 130" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M 62 52 C 46 64, 18 62, 16 44 C 14 26, 44 12, 68 15 C 88 18, 82 46, 65 78 C 54 99, 50 114, 56 115 C 63 116, 86 84, 114 50 C 136 24, 158 14, 174 16 C 178 17, 180 21, 177 25"
             stroke="#FFFFFF"
@@ -709,9 +725,14 @@ footer {
     </div>
   </div>
 
-  <button type="button" class="checkout-btn" id="checkoutBtn" onclick="checkoutWhatsApp()">
-    إتمام الطلب عبر واتساب
+  <button type="button" class="checkout-btn" id="checkoutBtn" onclick="submitOrder()">
+    تأكيد الطلب
   </button>
+
+  <div class="order-confirmation-box" id="orderConfirmationBox" role="status" aria-live="polite">
+    <strong>تم استلام طلبك بنجاح!</strong>
+    <span id="orderConfirmationDetails">شكرًا لتسوقك من Virdolo، تم تسجيل طلبك وسنتصل بك قريبًا لتأكيد التوصيل.</span>
+  </div>
 </div>
 
 <footer>
@@ -741,6 +762,7 @@ footer {
 </footer>
 
 <script>
+const ORDER_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbyxMVPuZVE-yyERv9YVYNRwe1s0ngitlDpEOL8BPB290SW9bsrnvmUDBqmoQI8HpjA1/exec";
 const WHATSAPP_NUMBER = "213797417520";
 const SOCIAL_HANDLES = {
   facebook: "https://www.facebook.com/virdolo1",
@@ -752,7 +774,6 @@ const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 const STORAGE_CART_KEY = "virdolo_cart_v1";
 const STORAGE_CUSTOMER_KEY = "virdolo_customer_v1";
 
-// بلديات الـ 58 ولاية الجزائرية
 const COMMUNES_BY_WILAYA = {
   "01": ["أدرار", "أولف", "رقان", "تسابيت", "فنوغيل", "تيمي", "زاوية كنتة", "إن زغمير", "شروين", "تمنطيط", "السبع", "أقبلي", "تيمقطن", "أوقروت", "دلدول", "متارفة"],
   "02": ["الشلف", "تنس", "بني حواء", "أبو الحسن", "تاجنة", "بني راشد", "المرسى", "وادي الفضة", "بني بوعتاب", "الكريمية", "بوقادير", "الزبوجة", "الحجاج", "مصدق", "وادي سلي", "سيدي عكاشة", "حرشون", "بريرة", "أولاد بن عبد القادر", "أولاد فارس", "الظهرة", "عين مران", "الماين", "سيدي عبد الرحمان", "بني مايدة", "وادي قوسين", "المطارفة", "تاوقريت", "الشطية", "الصبحة", "موحان", "تلعصة", "أم الدروع", "بنايرية", "الرحية"],
@@ -812,7 +833,6 @@ const COMMUNES_BY_WILAYA = {
   "58": ["المنيعة", "حاسي لفحل", "المنصورة"]
 };
 
-// أسعار التوصيل انطلاقاً من سطيف (Domicile / Stop desk)
 const SHIPPING_RATES = [
   { code: "01", name: "أدرار (Adrar)", domicile: 1300, stopdesk: 900 },
   { code: "02", name: "الشلف (Chlef)", domicile: 750, stopdesk: 450 },
@@ -872,75 +892,62 @@ const SHIPPING_RATES = [
   { code: "58", name: "المنيعة (El Meniaa)", domicile: 950, stopdesk: 600 }
 ];
 
-// أسعار Virdolo المحدّثة
 const products = [
-  // 1. Hoodies
   { id: 1, name: "Virdolo هودي أسود", category: "hoodie", price: 4000, img: "https://i.ibb.co/mgLNgwP/1794616283615.jpg" },
   { id: 2, name: "Virdolo هودي رمادي", category: "hoodie", price: 4000, img: "https://i.ibb.co/hJJnGdBZ/1794616364756.jpg" },
   { id: 3, name: "Virdolo هودي أبيض", category: "hoodie", price: 4000, img: "https://i.ibb.co/rfQz2JTY/1794616441008.jpg" },
   { id: 4, name: "Virdolo هودي أخضر", category: "hoodie", price: 4000, img: "https://i.ibb.co/DHY9rmYd/1794616497328.jpg" },
 
-  // 2. Ensembles - صوف
   { id: 5, name: "Virdolo أونسومبل صوف أسود", category: "ensemble", price: 4500, img: "https://i.ibb.co/RG4T0v18/1794617499778.jpg" },
   { id: 6, name: "Virdolo أونسومبل صوف رمادي", category: "ensemble", price: 4500, img: "https://i.ibb.co/XmCzLbn/1794617544478.jpg" },
   { id: 7, name: "Virdolo أونسومبل صوف أبيض", category: "ensemble", price: 4500, img: "https://i.ibb.co/gFwBJqrL/1794617627363.jpg" },
   { id: 8, name: "Virdolo أونسومبل صوف أخضر", category: "ensemble", price: 4500, img: "https://i.ibb.co/mC37C7qm/1794617724668.jpg" },
 
-  // 3. Ensembles - صيفي
   { id: 9, name: "Virdolo أونسومبل صيفي أسود", category: "ensemble", price: 3800, img: "https://i.ibb.co/2Yj6Wnw6/1795386720300.jpg" },
   { id: 10, name: "Virdolo أونسومبل صيفي رمادي", category: "ensemble", price: 3800, img: "https://i.ibb.co/YT2PbVZM/1795386646708.jpg" },
   { id: 11, name: "Virdolo أونسومبل صيفي أبيض", category: "ensemble", price: 3800, img: "https://i.ibb.co/60z9G3Jf/1795386893687.jpg" },
   { id: 12, name: "Virdolo أونسومبل صيفي أخضر", category: "ensemble", price: 3800, img: "https://i.ibb.co/7t4k6syD/1795386666646.jpg" },
 
-  // 4. أونسومبل كلاسيك - 4 ألوان
   { id: 53, name: "Virdolo أونسومبل كلاسيك أسود", category: "ensemble", price: 7100, img: "https://i.ibb.co/0pf7s6W9/1795385936468.jpg" },
   { id: 54, name: "Virdolo أونسومبل كلاسيك رمادي", category: "ensemble", price: 7100, img: "https://i.ibb.co/nqG89K9D/1795385993489.jpg" },
   { id: 55, name: "Virdolo أونسومبل كلاسيك أبيض", category: "ensemble", price: 7100, img: "https://i.ibb.co/G4Qqv2hT/1795386095963.jpg" },
   { id: 56, name: "Virdolo أونسومبل كلاسيك أخضر", category: "ensemble", price: 7100, img: "https://i.ibb.co/Z1LtgV93/1795386038631.jpg" },
 
-  // 5. أونسومبل سنسور - 4 ألوان
   { id: 57, name: "Virdolo أونسومبل سنسور أسود", category: "ensemble", price: 7000, img: "https://i.ibb.co/spgzLgbC/1795440984822.jpg" },
   { id: 58, name: "Virdolo أونسومبل سنسور رمادي", category: "ensemble", price: 7000, img: "https://i.ibb.co/jvDYBgTK/1795441071369.jpg" },
   { id: 59, name: "Virdolo أونسومبل سنسور أبيض", category: "ensemble", price: 7000, img: "https://i.ibb.co/ZQpG899/1795441100507.jpg" },
   { id: 60, name: "Virdolo أونسومبل سنسور أخضر", category: "ensemble", price: 7000, img: "https://i.ibb.co/spntqWD3/1795441137724.jpg" },
 
-  // 6. تريكو كلاسيك أولد موني - 4 ألوان
   { id: 13, name: "Virdolo تريكو كلاسيك أسود", category: "knit", price: 4500, img: "https://i.ibb.co/dsw3VNSm/1794618999087.jpg" },
   { id: 14, name: "Virdolo تريكو كلاسيك رمادي", category: "knit", price: 4500, img: "https://i.ibb.co/v4tr9cGF/1794619038823.jpg" },
   { id: 15, name: "Virdolo تريكو كلاسيك أبيض", category: "knit", price: 4500, img: "https://i.ibb.co/9k8kCRCc/1794619077516.jpg" },
   { id: 16, name: "Virdolo تريكو كلاسيك أخضر", category: "knit", price: 4500, img: "https://i.ibb.co/bgrgB2DG/1794619162134.jpg" },
 
-  // 7. تريكو عادي - 4 ألوان
   { id: 17, name: "Virdolo تريكو أسود", category: "knit", price: 2200, img: "https://i.ibb.co/qLt74bbN/1794616960351.jpg" },
   { id: 18, name: "Virdolo تريكو رمادي", category: "knit", price: 2200, img: "https://i.ibb.co/bMqs1ZRy/1794616968596.jpg" },
   { id: 19, name: "Virdolo تريكو أبيض", category: "knit", price: 2200, img: "https://i.ibb.co/JW2Mxnch/1794616973865.jpg" },
   { id: 20, name: "Virdolo تريكو أخضر", category: "knit", price: 2200, img: "https://i.ibb.co/J9fTxy2/1794616979989.jpg" },
 
-  // 8. Pants - سراويل
   { id: 21, name: "Virdolo سروال أسود", category: "pants", price: 3200, img: "https://i.ibb.co/7tG8CvSr/1794660729218.jpg" },
   { id: 22, name: "Virdolo سروال رمادي", category: "pants", price: 3200, img: "https://i.ibb.co/pgZ1Kt8/1794660546893.jpg" },
   { id: 23, name: "Virdolo سروال أبيض", category: "pants", price: 3200, img: "https://i.ibb.co/svPMdjQG/1794660618761.jpg" },
   { id: 24, name: "Virdolo سروال أخضر", category: "pants", price: 3200, img: "https://i.ibb.co/20KtHFpq/1794660516387.jpg" },
 
-  // 9. Summer T-Shirts - تريكو صيفي
   { id: 25, name: "Virdolo تريكو صيفي أسود", category: "tshirt", price: 2000, img: "https://i.ibb.co/jPtKK6Q5/1794618126308.jpg" },
   { id: 26, name: "Virdolo تريكو صيفي رمادي", category: "tshirt", price: 2000, img: "https://i.ibb.co/vvkT4BwL/1794618163110.jpg" },
   { id: 27, name: "Virdolo تريكو صيفي أبيض", category: "tshirt", price: 2000, img: "https://i.ibb.co/d027xn0r/1794618201521.jpg" },
   { id: 28, name: "Virdolo تريكو صيفي أخضر", category: "tshirt", price: 2000, img: "https://i.ibb.co/TDWwHjwn/1794618231424.jpg" },
 
-  // 10. Shorts - شورت
   { id: 29, name: "Virdolo شورت أسود", category: "shorts", price: 1900, img: "https://i.ibb.co/nsZPSCvV/1795386208669.jpg" },
   { id: 30, name: "Virdolo شورت رمادي", category: "shorts", price: 1900, img: "https://i.ibb.co/TxxFHyhX/1795386318141.jpg" },
   { id: 31, name: "Virdolo شورت أبيض", category: "shorts", price: 1900, img: "https://i.ibb.co/JjFFKvv7/1795386378115.jpg" },
   { id: 32, name: "Virdolo شورت أخضر", category: "shorts", price: 1900, img: "https://i.ibb.co/hFcS6Gvq/1795386347165.jpg" },
 
-  // 11. Accessories - شاشيات
   { id: 45, name: "Virdolo شاشية أسود", category: "accessories", price: 1050, img: "https://i.ibb.co/1tr9Y8Gh/1795385020409.jpg" },
   { id: 46, name: "Virdolo شاشية رمادي", category: "accessories", price: 1050, img: "https://i.ibb.co/ZzFhsV2J/1795385078878.jpg" },
   { id: 47, name: "Virdolo شاشية أبيض", category: "accessories", price: 1050, img: "https://i.ibb.co/V0khk82d/1795385113467.jpg" },
   { id: 48, name: "Virdolo شاشية أخضر", category: "accessories", price: 1050, img: "https://i.ibb.co/7NR06NQX/1795385156661.jpg" },
 
-  // 12. Accessories - قبعات
   { id: 49, name: "Virdolo قبعة أسود", category: "accessories", price: 1250, img: "https://i.ibb.co/KcKC7p61/1795387001448.jpg" },
   { id: 50, name: "Virdolo قبعة رمادي", category: "accessories", price: 1250, img: "https://i.ibb.co/sJKFrxg9/1795387057524.jpg" },
   { id: 51, name: "Virdolo قبعة أبيض", category: "accessories", price: 1250, img: "https://i.ibb.co/DggXbNck/1795386964094.jpg" },
@@ -1098,6 +1105,24 @@ function saveCustomerInfo() {
       deliveryType: document.getElementById("deliveryType").value
     }));
   } catch (e) {}
+}
+
+function hideConfirmationBox() {
+  const box = document.getElementById("orderConfirmationBox");
+  if (box) {
+    box.classList.remove("show");
+  }
+}
+
+function showConfirmationBox(text) {
+  const box = document.getElementById("orderConfirmationBox");
+  const details = document.getElementById("orderConfirmationDetails");
+  if (details) {
+    details.textContent = text;
+  }
+  if (box) {
+    box.classList.add("show");
+  }
 }
 
 function renderSizeButtons(productId, containerId) {
@@ -1279,6 +1304,7 @@ function showToast(message) {
 }
 
 function addToCart(productId) {
+  hideConfirmationBox();
   const size = selectedSizes[productId] || 'M';
   const product = products.find(p => p.id === productId);
   if (!product) return;
@@ -1385,7 +1411,18 @@ function removeFromCart(index) {
   updateCartUI();
 }
 
-function checkoutWhatsApp() {
+async function sendOrderToSheet(payload) {
+  await fetch(ORDER_WEBHOOK_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8"
+    },
+    body: JSON.stringify(payload)
+  });
+}
+
+async function submitOrder() {
   if (checkoutLocked) return;
 
   const name = document.getElementById('custName').value.trim();
@@ -1396,7 +1433,7 @@ function checkoutWhatsApp() {
   const deliveryType = document.getElementById('deliveryType').value;
 
   if (cart.length === 0) {
-    alert('أضف منتجاً واحداً على الأقل إلى السلة قبل إرسال الطلب.');
+    alert('أضف منتجاً واحداً على الأقل إلى السلة قبل تأكيد الطلب.');
     return;
   }
 
@@ -1406,53 +1443,55 @@ function checkoutWhatsApp() {
   }
 
   const wilaya = SHIPPING_RATES.find(w => w.code === stateCode);
-  const wilayaLabel = wilaya ? `${wilaya.code} - ${wilaya.name}` : (stateCode || "غير محددة (انظر العنوان/الملاحظة)");
-  const communeLabel = commune || (note ? "مذكورة في العنوان/الملاحظة" : "غير محددة");
+  const wilayaLabel = wilaya ? `${wilaya.code} - ${wilaya.name}` : (stateCode || "غير محددة");
+  const communeLabel = commune || (note ? `ملاحظة: ${note}` : "غير محددة");
   const deliveryLabel = deliveryType === 'domicile' ? 'للمنزل (Domicile)' : 'للمكتب (Stop desk)';
   const itemsTotal = cart.reduce((sum, i) => sum + i.price * (i.qty || 1), 0);
   const shippingCost = getShippingCost();
   const grandTotal = itemsTotal + shippingCost;
 
-  let msg = `طلب جديد من متجر Virdolo:\n`;
-  msg += `الاسم: ${name}\n`;
-  msg += `هاتف الزبون: ${phone}\n`;
-  msg += `الولاية: ${wilayaLabel}\n`;
-  msg += `البلدية: ${communeLabel}\n`;
-  if (note) {
-    msg += `ملاحظة / العنوان: ${note}\n`;
-  }
-  msg += `نوع التوصيل: ${deliveryLabel}\n\n`;
-  msg += `المنتجات:\n`;
-
-  cart.forEach(item => {
+  const itemsSummary = cart.map(item => {
     const qty = item.qty || 1;
-    msg += `- ${item.name} (مقاس: ${item.size}) × ${qty} = ${item.price * qty} دج\n`;
-  });
-
-  msg += `\nسعر المنتجات: ${itemsTotal} دج`;
-  msg += `\nسعر التوصيل: ${shippingCost} دج`;
-  msg += `\nالمجموع الإجمالي: ${grandTotal} دج`;
+    const notePart = note ? ` | ملاحظة: ${note}` : '';
+    return `${item.name} (${item.size}) × ${qty} [${deliveryLabel}${notePart}]`;
+  }).join(' ، ');
 
   checkoutLocked = true;
   const btn = document.getElementById('checkoutBtn');
-  if (btn) btn.disabled = true;
-
-  const encodedMsg = encodeURIComponent(msg);
-  const cleanPhone = WHATSAPP_NUMBER.replace(/\D/g, '');
-  const webWaUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMsg}`;
-  const isAndroid = /Android/i.test(navigator.userAgent || '');
-
-  if (isAndroid) {
-    const intentUrl = `intent://send/?phone=${cleanPhone}&text=${encodedMsg}#Intent;scheme=whatsapp;package=com.whatsapp;S.browser_fallback_url=${encodeURIComponent(webWaUrl)};end`;
-    window.location.href = intentUrl;
-  } else {
-    window.open(webWaUrl, '_blank', 'noopener,noreferrer');
+  const originalBtnText = btn ? btn.textContent : 'تأكيد الطلب';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'جاري تسجيل الطلب...';
   }
+  hideConfirmationBox();
 
-  setTimeout(() => {
+  try {
+    await sendOrderToSheet({
+      name,
+      phone,
+      wilaya: wilayaLabel,
+      commune: communeLabel,
+      items: itemsSummary,
+      total: `${grandTotal} دج`
+    });
+
+    cart = [];
+    saveCartState();
+    updateCartUI();
+
+    showConfirmationBox(
+      `شكرًا لك يا ${name}، تم تسجيل طلبك بنجاح بقيمة ${grandTotal} دج (${deliveryLabel}). سنتواصل معك على الرقم ${phone} لتأكيد التوصيل.`
+    );
+    showToast("تم تسجيل طلبك بنجاح!");
+  } catch (err) {
+    alert('تعذر إرسال الطلب حاليًا، يرجى التحقق من الاتصال بالإنترنت والمحاولة مرة أخرى.');
+  } finally {
     checkoutLocked = false;
-    if (btn) btn.disabled = false;
-  }, 1500);
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalBtnText;
+    }
+  }
 }
 
 initSocialLinks();

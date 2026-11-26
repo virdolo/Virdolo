@@ -391,6 +391,46 @@ header {
   display: inline-block;
 }
 
+.exit-guard-banner {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #181818;
+  color: #f6f4ef;
+  border: 1px solid #3a473e;
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  font-weight: 700;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+  z-index: 3500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 92%;
+  text-align: right;
+}
+.exit-guard-banner.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.exit-stay-btn {
+  background: #f6f4ef;
+  color: #181818;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .cart-drawer {
   position: fixed;
   top: 0;
@@ -736,6 +776,12 @@ footer {
   <span id="toastText">تمت إضافة المنتج إلى السلة</span>
 </div>
 
+<!-- تنبيه قبل الخروج من المتجر -->
+<div class="exit-guard-banner" id="exitGuardBanner" role="status" aria-live="polite">
+  <span>أنت داخل متجر <strong>Virdolo</strong> — اضغط رجوع مرة أخرى للخروج</span>
+  <button type="button" class="exit-stay-btn" id="exitStayBtn" onclick="stayInStore()">البقاء</button>
+</div>
+
 <div class="cart-drawer" id="cartDrawer">
   <div class="cart-header">
     <h3 class="cart-header-title">
@@ -1035,8 +1081,10 @@ let currentCategory = 'all';
 let activeModalProductId = null;
 let cartOpen = false;
 let overlayHistoryDepth = 0;
+let exitGuardArmed = false;
 let closingFromPopstate = false;
 let toastTimer = null;
+let exitBannerTimer = null;
 let checkoutLocked = false;
 
 function initSocialLinks() {
@@ -1050,7 +1098,39 @@ function initSocialLinks() {
   if (wa) wa.href = SOCIAL_HANDLES.whatsapp;
 }
 
+function hideExitGuardBanner() {
+  const banner = document.getElementById("exitGuardBanner");
+  if (banner) {
+    banner.classList.remove("show");
+  }
+  clearTimeout(exitBannerTimer);
+}
+
+function armExitGuard() {
+  if (exitGuardArmed) return;
+  try {
+    history.pushState({ virdoloExitGuard: true }, '');
+    exitGuardArmed = true;
+  } catch (e) {}
+}
+
+function showExitGuardBanner() {
+  const banner = document.getElementById("exitGuardBanner");
+  if (!banner) return;
+  banner.classList.add("show");
+  clearTimeout(exitBannerTimer);
+  exitBannerTimer = setTimeout(() => {
+    banner.classList.remove("show");
+  }, 3500);
+}
+
+function stayInStore() {
+  hideExitGuardBanner();
+  armExitGuard();
+}
+
 function pushOverlayHistoryEntry(kind) {
+  hideExitGuardBanner();
   try {
     history.pushState({ virdoloOverlay: kind }, '');
     overlayHistoryDepth += 1;
@@ -1394,22 +1474,44 @@ function toggleCart(forceOpen = null, syncHistory = true) {
   }
 }
 
+window.addEventListener('load', () => {
+  setTimeout(armExitGuard, 120);
+});
+
+document.addEventListener('pointerdown', () => {
+  armExitGuard();
+}, { passive: true });
+
 window.addEventListener('popstate', () => {
   closingFromPopstate = true;
+
   if (overlayHistoryDepth > 0) {
     overlayHistoryDepth -= 1;
-  }
 
-  if (cartOpen) {
-    cartOpen = false;
-    document.getElementById('cartDrawer').classList.remove('open');
-    if (activeModalProductId === null) {
+    if (cartOpen) {
+      cartOpen = false;
+      document.getElementById('cartDrawer').classList.remove('open');
+      if (activeModalProductId === null) {
+        document.body.classList.remove('modal-open');
+      }
+    } else if (activeModalProductId !== null) {
+      activeModalProductId = null;
+      document.getElementById('productModal').classList.remove('open');
       document.body.classList.remove('modal-open');
     }
-  } else if (activeModalProductId !== null) {
-    activeModalProductId = null;
-    document.getElementById('productModal').classList.remove('open');
-    document.body.classList.remove('modal-open');
+
+    setTimeout(() => {
+      closingFromPopstate = false;
+    }, 60);
+    return;
+  }
+
+  if (exitGuardArmed) {
+    exitGuardArmed = false;
+    showExitGuardBanner();
+    setTimeout(() => {
+      armExitGuard();
+    }, 60);
   }
 
   setTimeout(() => {
@@ -1640,7 +1742,7 @@ loadSavedState();
 syncCategoryButtons(products);
 displayProducts(products);
 updateCartUI();
-fetchProductsFromSheet();
+// تم إيقاف الجلب التلقائي من الشيت حتى لا يبدل المنتجات أو التصنيفات
 </script>
 </body>
 </html>
